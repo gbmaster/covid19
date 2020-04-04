@@ -111,29 +111,13 @@ end_infection = int(
 
 inflection_day = first_day + datetime.timedelta(days=int(confirmed_fit[1]))
 print("Inflection on {0:s}".format(inflection_day.strftime("%d/%m/%Y")))
-end_day = first_day + datetime.timedelta(days=end_infection)
-print("End of infection on {0:s}".format(end_day.strftime("%d/%m/%Y")))
-next_confirmed_1 = int(logistic_model(max(days_x) + 1, confirmed_fit[0], confirmed_fit[1], confirmed_fit[2]))
-next_confirmed_2 = int(logistic_model(max(days_x) + 2, confirmed_fit[0], confirmed_fit[1], confirmed_fit[2]))
-confirmed_percent_diff_1 = ((next_confirmed_1 - confirmed_y[-1]) * 100) / confirmed_y[-1]
-confirmed_percent_diff_2 = ((next_confirmed_2 - next_confirmed_1) * 100) / next_confirmed_1
-print(
-    "Next two expected data on confirmed cases: {0:d} ({1:s}{2:.2f}% {1:s}{3:d}) / {4:d} ({5:s}{6:.2f}% {5:s}{7:d})".format(
-        next_confirmed_1,
-        "+" if confirmed_percent_diff_1 > 0 else "",
-        confirmed_percent_diff_1,
-        next_confirmed_1 - confirmed_y[-1],
-        next_confirmed_2,
-        "+" if confirmed_percent_diff_2 > 0 else "",
-        confirmed_percent_diff_2,
-        next_confirmed_2 - next_confirmed_1,
-    )
-)
 print(
     "Expected total cases: {0:d}".format(
         int(logistic_model(end_infection, confirmed_fit[0], confirmed_fit[1], confirmed_fit[2]))
     )
 )
+end_day = first_day + datetime.timedelta(days=end_infection)
+print("End of infection on {0:s}".format(end_day.strftime("%d/%m/%Y")))
 
 ####################
 # Deceases curve fit
@@ -179,38 +163,50 @@ peak_day = first_day + datetime.timedelta(days=int(remaining_cases_mean))
 print("Peak on {0:s}".format(peak_day.strftime("%d/%m/%Y")))
 
 pred_x = list(range(max(days_x), end_infection))
-plt.rcParams["figure.figsize"] = [7, 7]
-plt.rc("font", size=14)
+plt.figure(figsize=(7, 7))
 
-plt.scatter(days_x, confirmed_y, label="Confirmed cases", color="red")
-plt.scatter(days_x, deceases_y, label="Deceases", color="black")
-plt.scatter(days_x, recovered_y, label="Recovered cases", color="green")
-plt.scatter(days_x, remaining_y, label="Remaining cases", color="brown")
+plt.scatter(days_x, confirmed_y, color="red")
+plt.scatter(days_x, deceases_y, color="black")
+plt.scatter(days_x, recovered_y, color="green")
+plt.scatter(days_x, remaining_y, color="brown")
 
 plt.plot(
     days_x + pred_x,
     [logistic_model(x, confirmed_fit[0], confirmed_fit[1], confirmed_fit[2]) for x in days_x + pred_x],
-    label="Confirmed cases model",
+    label="Confirmed cases (logistic)",
     c="red",
 )
 plt.plot(
     days_x + pred_x,
     [logistic_model(x, deceases_fit[0], deceases_fit[1], deceases_fit[2]) for x in days_x + pred_x],
-    label="Deceases model",
+    label="Deceases (logistic)",
     c="black",
 )
 plt.plot(
     days_x + pred_x,
     [logistic_model(x, recovered_fit[0], recovered_fit[1], recovered_fit[2]) for x in days_x + pred_x],
-    label="Recovered cases model",
+    label="Recovered cases (logistic)",
     c="green",
 )
 plt.plot(
     days_x + pred_x,
     [gauss_model(x, remaining_cases_peak, remaining_cases_mean, remaining_cases_sd) for x in days_x + pred_x],
-    label="Remaining cases model",
+    label="Remaining cases (gaussian)",
     c="brown",
 )
+plt.plot(
+    days_x + pred_x,
+    [
+        logistic_model(x, confirmed_fit[0], confirmed_fit[1], confirmed_fit[2])
+        - (
+            logistic_model(x, recovered_fit[0], recovered_fit[1], recovered_fit[2])
+            + logistic_model(x, deceases_fit[0], deceases_fit[1], deceases_fit[2])
+        )
+        for x in days_x + pred_x
+    ],
+    label="Remaining cases (logistic difference)",
+    c="blue",
+)
 plt.axvline(int(remaining_cases_mean), label="Peak", c="g")
-plt.legend(prop={"size": 13})
-plt.savefig("infections.png")
+plt.legend(loc="upper right")
+plt.savefig("infections.png", dpi=200)
